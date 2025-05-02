@@ -1,4 +1,4 @@
-// server.js
+// server.js - Modificado para funcionar na Vercel
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -13,7 +13,6 @@ const webhookRoutes = require('./routes/webhookRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -25,15 +24,21 @@ app.use('/webhook', express.raw({ type: 'application/json' }));
 
 // Routes
 app.use('/api/stripe/connect', stripeConnectRoutes);
-app.use('/', webhookRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/', webhookRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Launch the server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Para desenvolvimento local
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// Exportar a instância do Express para a Vercel
+module.exports = app;
