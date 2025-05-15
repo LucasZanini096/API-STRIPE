@@ -63,4 +63,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Exportar a instância do Express para a Vercel
-module.exports = { app };
+module.exports = app;
