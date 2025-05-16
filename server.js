@@ -3,8 +3,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
-const serveSwaggerUI = require('./config/swagger-ui'); // Nossa implementação personalizada
 
 // Load environment variables
 dotenv.config();
@@ -21,9 +21,6 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// Servir arquivos estáticos do diretório public
-app.use(express.static('public'));
 
 // Special middleware for Stripe webhooks (raw body)
 app.use('/webhook', (req, res, next) => {
