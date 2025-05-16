@@ -11,9 +11,15 @@ exports.handleWebhook = async (req, res) => {
   let event;
 
   try {
+    // Adaptação para funcionar na Vercel
+    const rawBody = req.rawBody || req.body;
+    
+    // Verificar se rawBody é uma string (como esperado pelo Stripe)
+    const payload = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+    
     // Verify webhook signature
     event = stripe.webhooks.constructEvent(
-      req.body,
+      payload,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );

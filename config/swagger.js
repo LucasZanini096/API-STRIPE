@@ -2,6 +2,48 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const config = require('./index');
 
+// Determine os servidores com base no ambiente
+const getServers = () => {
+  // URLs base para os diferentes ambientes
+  const isProd = process.env.NODE_ENV === 'production';
+  const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+  
+  const servers = [];
+  
+  // Para produção na Vercel, adicione a URL da Vercel primeiro
+  if (isProd && vercelUrl) {
+    servers.push({
+      url: vercelUrl,
+      description: 'Servidor de Produção (Vercel)'
+    });
+  }
+  
+  // Sempre adicione as URLs configuradas
+  if (config.appUrl) {
+    servers.push({
+      url: config.appUrl,
+      description: isProd ? 'Servidor principal' : 'Servidor de desenvolvimento'
+    });
+  }
+  
+  if (config.frontendUrl) {
+    servers.push({
+      url: config.frontendUrl,
+      description: 'Servidor frontend'
+    });
+  }
+  
+  // Se nenhum servidor foi configurado, use um padrão
+  if (servers.length === 0) {
+    servers.push({
+      url: isProd ? (vercelUrl || 'https://seu-app.vercel.app') : 'http://localhost:3000',
+      description: isProd ? 'Servidor de Produção' : 'Servidor de Desenvolvimento'
+    });
+  }
+  
+  return servers;
+};
+
 const options = {
   definition: {
     openapi: '3.0.0',
@@ -14,16 +56,7 @@ const options = {
         email: 'suporte@seuapp.com',
       },
     },
-    servers: [
-      {
-        url: config.appUrl,
-        description: 'Servidor de desenvolvimento',
-      },
-      {
-        url: config.frontendUrl,
-        description: 'Servidor frontend',
-      },
-    ],
+    servers: getServers(),
     components: {
       schemas: {
         Product: {
