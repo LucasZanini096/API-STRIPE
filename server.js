@@ -40,11 +40,20 @@ app.use('/webhook', (req, res, next) => {
 });
 
 // Swagger documentation
+// Update the setup options in your server.js file
+
+// In your server.js file, modify the Swagger UI setup:
 app.use('/api-docs', swaggerUi.serve);
 app.get('/api-docs', swaggerUi.setup(swaggerSpecs, { 
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "API de Pagamentos - Documentação"
+  customSiteTitle: "API de Pagamentos - Documentação",
+  swaggerOptions: {
+    url: '/api/docs/swagger.json',
+    docExpansion: 'list',
+    persistAuthorization: true,
+    displayRequestDuration: true
+  }
 }));
 
 // Rota raiz - página inicial com links para documentação
@@ -109,6 +118,59 @@ app.get('/', (req, res) => {
     </body>
     </html>
   `);
+});
+
+// Replace your current Swagger setup with this approach:
+
+app.get('/api-docs', (req, res) => {
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>API de Pagamentos - Documentação</title>
+        <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css" />
+        <style>
+          html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+          *, *:before, *:after { box-sizing: inherit; }
+          body { margin: 0; background: #fafafa; }
+          .swagger-ui .topbar { display: none; }
+        </style>
+      </head>
+      <body>
+        <div id="swagger-ui"></div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
+        <script>
+          window.onload = function() {
+            const ui = SwaggerUIBundle({
+              url: "${baseUrl}/api/docs/swagger.json",
+              dom_id: '#swagger-ui',
+              deepLinking: true,
+              presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+              ],
+              plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+              ],
+              layout: "StandaloneLayout"
+            });
+            window.ui = ui;
+          };
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+// Add this after your other routes
+app.get('/api/docs/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpecs);
 });
 
 // Routes

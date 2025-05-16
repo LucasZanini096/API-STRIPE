@@ -9,6 +9,22 @@
   "routes": [
     {
       "src": "/api-docs/(.*)",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Access-Control-Allow-Origin": "*"
+      },
+      "dest": "/server.js"
+    },
+    {
+      "src": "/api/docs/(.*)",
+      "headers": {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
+      "dest": "/server.js"
+    },
+    {
+      "src": "/swagger-ui(.*)",
       "dest": "/server.js"
     },
     {
