@@ -36,7 +36,7 @@ const getServers = () => {
   // Se nenhum servidor foi configurado, use um padrão
   if (servers.length === 0) {
     servers.push({
-      url: isProd ? (vercelUrl || 'https://seu-app.vercel.app') : 'http://localhost:3000',
+      url: isProd ? (vercelUrl || '') : 'https://api-stripe-o3zkpzvzx-lucas-zanini-da-silvas-projects.vercel.app/',
       description: isProd ? 'Servidor de Produção' : 'Servidor de Desenvolvimento'
     });
   }

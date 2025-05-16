@@ -7,7 +7,7 @@ module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
   
   // Application URLs
-  appUrl: process.env.APP_URL || 'http://localhost:3000',
+  appUrl: process.env.APP_URL || 'https://api-stripe-o3zkpzvzx-lucas-zanini-da-silvas-projects.vercel.app/',
   frontendUrl: process.env.FRONTEND_APP_URL || 'http://localhost:8080',
   
   // Stripe configuration
