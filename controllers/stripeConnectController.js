@@ -77,14 +77,82 @@ exports.createConnectAccount = async (req, res) => {
   }
 };
 
-// Get onboarding status for a user
-// Função atualizada para obter status da conta usando o ID do Stripe diretamente
+// Get onboarding status for a user using path parameter (original)
 exports.getAccountStatus = async (req, res) => {
   try {
     const { stripeAccountId } = req.params;
     
     // Validar o formato básico do ID da conta Stripe
     if (!stripeAccountId || !stripeAccountId.startsWith('acct_')) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID da conta Stripe inválido. Deve começar com "acct_"'
+      });
+    }
+
+    try {
+      // Obter detalhes atualizados diretamente do Stripe
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+      
+      // Retornar status
+      res.json({
+        success: true,
+        accountId: stripeAccountId,
+        status: {
+          charges_enabled: account.charges_enabled,
+          details_submitted: account.details_submitted,
+          payouts_enabled: account.payouts_enabled,
+          requirements: account.requirements
+        },
+        account_type: account.type,
+        business_type: account.business_type,
+        email: account.email,
+        country: account.country,
+        created: new Date(account.created * 1000).toISOString(),
+        canReceivePayments: account.charges_enabled,
+        dashboardUrl: 'https://dashboard.stripe.com/account'
+      });
+    } catch (stripeError) {
+      // Tratamento específico para erros do Stripe
+      if (stripeError.code === 'resource_missing') {
+        return res.status(404).json({
+          success: false,
+          message: 'Conta Stripe não encontrada'
+        });
+      }
+      
+      // Outros erros do Stripe
+      return res.status(400).json({
+        success: false,
+        message: `Erro ao consultar conta Stripe: ${stripeError.message}`,
+        code: stripeError.code
+      });
+    }
+
+  } catch (error) {
+    console.error('Erro ao recuperar status da conta:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Get onboarding status for a user using query parameter (new)
+exports.getAccountStatusByQuery = async (req, res) => {
+  try {
+    const { stripeAccountId } = req.query;
+    
+    // Validar a presença do parâmetro
+    if (!stripeAccountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID da conta Stripe não fornecido. Use query parameter ?stripeAccountId=acct_...'
+      });
+    }
+    
+    // Validar o formato básico do ID da conta Stripe
+    if (!stripeAccountId.startsWith('acct_')) {
       return res.status(400).json({
         success: false,
         message: 'ID da conta Stripe inválido. Deve começar com "acct_"'

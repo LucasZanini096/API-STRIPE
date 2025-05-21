@@ -177,4 +177,109 @@ router.get('/status/:stripeAccountId', stripeConnectController.getAccountStatus)
  */
 router.post('/refresh-onboarding/:uid', stripeConnectController.refreshOnboardingLink);
 
+
+/**
+ * @swagger
+ * /api/stripe/connect/status:
+ *   get:
+ *     summary: Obter o status da conta Stripe Connect (query parameter)
+ *     tags: [Stripe Connect]
+ *     description: Recupera o status atual de uma conta Stripe Connect usando query parameter
+ *     parameters:
+ *       - in: query
+ *         name: stripeAccountId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID da conta Stripe (começa com acct_)
+ *     responses:
+ *       200:
+ *         description: Status da conta recuperado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 accountId:
+ *                   type: string
+ *                   example: acct_123456789
+ *                 status:
+ *                   type: object
+ *                   properties:
+ *                     charges_enabled:
+ *                       type: boolean
+ *                     details_submitted:
+ *                       type: boolean
+ *                     payouts_enabled:
+ *                       type: boolean
+ *                     requirements:
+ *                       type: object
+ *                 account_type:
+ *                   type: string
+ *                   example: standard
+ *                 business_type:
+ *                   type: string
+ *                   example: individual
+ *                 email:
+ *                   type: string
+ *                   format: email
+ *                 country:
+ *                   type: string
+ *                   example: BR
+ *                 created:
+ *                   type: string
+ *                   format: date-time
+ *                 canReceivePayments:
+ *                   type: boolean
+ *                 dashboardUrl:
+ *                   type: string
+ *                   example: https://dashboard.stripe.com/account
+ *       400:
+ *         description: Requisição inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: ID da conta Stripe não fornecido. Use query parameter ?stripeAccountId=acct_...
+ *       404:
+ *         description: Conta não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Conta Stripe não encontrada
+ *       500:
+ *         description: Erro no servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Erro interno do servidor
+ */
+
+
+// Get onboarding status for a user (query parameter - new)
+router.get('/status', stripeConnectController.getAccountStatusByQuery);
+
 module.exports = router;
