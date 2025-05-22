@@ -26,9 +26,11 @@ exports.createCheckoutSession = async (req, res) => {
     const {
       productId,
       stripeAccountId, // ID da conta Stripe Connect do vendedor (não mais o UID interno)
+      name,
+      price,
+      description,
+      image,
       quantity = 1,
-      successUrl,
-      cancelUrl
     } = req.body;
 
     // Validar parâmetros
@@ -39,13 +41,13 @@ exports.createCheckoutSession = async (req, res) => {
       });
     }
 
-    // Encontrar o produto
-    const product = products.find(p => p.id === productId);
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Produto não encontrado'
-      });
+    // Determinar o produto a ser pago
+    const product = {
+      id: productId,
+      name: name || 'Produto Genérico',
+      description: description || 'Descrição genérica do produto',
+      price: parseInt(price * 100), // Converter para centavos
+      images: image || []
     }
 
     // Verificar se a conta Stripe Connect existe e está ativa
@@ -66,8 +68,8 @@ exports.createCheckoutSession = async (req, res) => {
       const platformFeeAmount = Math.round(product.price * quantity * (platformFeePercent / 100));
 
       // URLs de redirecionamento
-      const success_url = successUrl || `${process.env.FRONTEND_APP_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
-      const cancel_url = cancelUrl || `${process.env.FRONTEND_APP_URL}/payment/cancel`;
+      const success_url = `${process.env.FRONTEND_APP_URL}/Confirmation_Payment`;
+      const cancel_url =  `${process.env.FRONTEND_APP_URL}/Cancel_Payment`;
 
       // Criar uma sessão de checkout do Stripe
       const session = await stripe.checkout.sessions.create({
