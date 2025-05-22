@@ -25,7 +25,7 @@ exports.createCheckoutSession = async (req, res) => {
   try {
     const {
       productId,
-      stripeAccountId, // ID da conta Stripe Connect do vendedor (não mais o UID interno)
+      stripeAccountId, // ID da conta Stripe Connect do vendedor
       name,
       price,
       description,
@@ -33,27 +33,69 @@ exports.createCheckoutSession = async (req, res) => {
       quantity = 1,
     } = req.body;
 
-    // Validar parâmetros
-    if (!productId || !stripeAccountId) {
+    console.log('Dados recebidos:', { productId, stripeAccountId, name, price, description, image, quantity });
+
+    // Validar parâmetros obrigatórios
+    if (!productId || !stripeAccountId || !name || !price) {
       return res.status(400).json({
         success: false,
-        message: 'productId e stripeAccountId são obrigatórios'
+        message: 'productId, stripeAccountId, name e price são obrigatórios'
       });
     }
 
-    // Determinar o produto a ser pago
+    // Validar e converter preço
+    let priceInCents;
+    try {
+      const priceFloat = parseFloat(price);
+      if (isNaN(priceFloat) || priceFloat <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Preço deve ser um número válido maior que zero'
+        });
+      }
+      priceInCents = Math.round(priceFloat * 100); // Converter para centavos
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Erro ao processar preço: deve ser um número válido'
+      });
+    }
+
+    // Preparar array de imagens - CORREÇÃO AQUI
+    let images = [];
+    if (image) {
+      if (typeof image === 'string' && image.trim() !== '') {
+        // Se for uma string, adicionar ao array
+        images = [image];
+      } else if (Array.isArray(image)) {
+        // Se já for um array, filtrar URLs válidas
+        images = image.filter(img => typeof img === 'string' && img.trim() !== '');
+      }
+    }
+
+    console.log('Images processadas:', images);
+
+    // Criar objeto do produto
     const product = {
       id: productId,
-      name: name || 'Produto Genérico',
-      description: description || 'Descrição genérica do produto',
-      price: parseInt(price * 100), // Converter para centavos
-      images: image || []
-    }
+      name: name,
+      description: description || 'Produto disponível para compra',
+      price: priceInCents,
+      images: images // Array de strings com URLs das imagens
+    };
+
+    console.log('Produto criado:', product);
 
     // Verificar se a conta Stripe Connect existe e está ativa
     try {
       // Consultar a conta diretamente no Stripe
       const account = await stripe.accounts.retrieve(stripeAccountId);
+      
+      console.log('Conta Stripe encontrada:', {
+        id: account.id,
+        charges_enabled: account.charges_enabled,
+        details_submitted: account.details_submitted
+      });
       
       // Verificar se o vendedor pode receber pagamentos
       if (!account.charges_enabled) {
@@ -63,13 +105,16 @@ exports.createCheckoutSession = async (req, res) => {
         });
       }
       
-      // Calcular a taxa da plataforma (por exemplo, 10%)
+      // Calcular a taxa da plataforma (10%)
       const platformFeePercent = 10;
       const platformFeeAmount = Math.round(product.price * quantity * (platformFeePercent / 100));
 
       // URLs de redirecionamento
       const success_url = `${process.env.FRONTEND_APP_URL}/Confirmation_Payment`;
-      const cancel_url =  `${process.env.FRONTEND_APP_URL}/Cancel_Payment`;
+      const cancel_url = `${process.env.FRONTEND_APP_URL}/Cancel_Payment`;
+
+      console.log('URLs de redirecionamento:', { success_url, cancel_url });
+      console.log('Taxa da plataforma:', platformFeeAmount);
 
       // Criar uma sessão de checkout do Stripe
       const session = await stripe.checkout.sessions.create({
@@ -81,7 +126,7 @@ exports.createCheckoutSession = async (req, res) => {
               product_data: {
                 name: product.name,
                 description: product.description,
-                images: product.images
+                images: product.images // Array de URLs válidas
               },
               unit_amount: product.price,
             },
@@ -100,8 +145,13 @@ exports.createCheckoutSession = async (req, res) => {
         metadata: {
           productId: product.id,
           stripeAccountId: stripeAccountId,
-          platformFee: platformFeeAmount
+          platformFee: platformFeeAmount.toString()
         }
+      });
+
+      console.log('Sessão criada com sucesso:', {
+        id: session.id,
+        url: session.url
       });
 
       // Retornar a sessão criada
@@ -113,13 +163,22 @@ exports.createCheckoutSession = async (req, res) => {
       });
       
     } catch (stripeError) {
-      // Erros específicos do Stripe (ex: conta não encontrada)
+      // Erros específicos do Stripe
       console.error('Erro do Stripe:', stripeError);
       
       if (stripeError.code === 'resource_missing') {
         return res.status(404).json({
           success: false,
           message: 'Conta Stripe Connect não encontrada'
+        });
+      }
+      
+      // Tratar erro específico de imagem
+      if (stripeError.message && stripeError.message.includes('Invalid array')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Erro no formato da imagem. Verifique se a URL da imagem é válida.',
+          details: stripeError.message
         });
       }
       
@@ -130,10 +189,10 @@ exports.createCheckoutSession = async (req, res) => {
     }
 
   } catch (error) {
-    console.error('Erro ao criar sessão de checkout:', error);
+    console.error('Erro geral ao criar sessão de checkout:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: `Erro interno do servidor: ${error.message}`
     });
   }
 };
