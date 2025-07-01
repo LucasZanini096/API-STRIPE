@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
 
+
 // Load environment variables
 dotenv.config();
 
@@ -13,6 +14,7 @@ dotenv.config();
 const stripeConnectRoutes = require('./routes/stripeConnectRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const nativePaymentRoutes = require('./routes/nativePaymentRoutes');
 //const docsRoutes = require('./routes/docsRoutes');
 
 const app = express();
@@ -176,6 +178,7 @@ app.get('/api/docs/swagger.json', (req, res) => {
 // Routes
 app.use('/api/stripe/connect', stripeConnectRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/native-payments', nativePaymentRoutes);
 //app.use('/api/docs', docsRoutes);
 app.use('/', webhookRoutes);
 
