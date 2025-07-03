@@ -1,15 +1,171 @@
-// routes/paymentRoutes.js
+// routes/paymentRoutes.js - Rotas atualizadas com Payment Intent
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
 
 /**
  * @swagger
- * /api/payments/create-checkout-session:
+ * /create-payment-intent:
  *   post:
- *     summary: Criar uma sessão de checkout do Stripe
- *     tags: [Pagamentos]
- *     description: Cria uma nova sessão de checkout do Stripe para processamento de pagamento
+ *     summary: Criar Payment Intent para pagamento integrado
+ *     description: Cria um Payment Intent para processar pagamentos diretamente no app, repassando a taxa de plataforma e o valor ao vendedor.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productId
+ *               - stripeAccountId
+ *             properties:
+ *               productId:
+ *                 type: string
+ *                 description: ID do produto a ser comprado
+ *               stripeAccountId:
+ *                 type: string
+ *                 description: ID da conta Stripe Connect do vendedor
+ *               quantity:
+ *                 type: integer
+ *                 default: 1
+ *               customerInfo:
+ *                 type: object
+ *                 description: Informações do cliente (opcional)
+ *     responses:
+ *       200:
+ *         description: Payment Intent criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 clientSecret:
+ *                   type: string
+ *                 paymentIntentId:
+ *                   type: string
+ *                 product:
+ *                   $ref: '#/components/schemas/Product'
+ *                 fees:
+ *                   type: object
+ *                   properties:
+ *                     platformFeeAmount:
+ *                       type: integer
+ *                     sellerAmount:
+ *                       type: integer
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         description: Produto ou conta Stripe não encontrada
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+router.post('/create-payment-intent', paymentController.createPaymentIntent);
+
+/**
+ * @swagger
+ * /confirm-payment:
+ *   post:
+ *     summary: Confirmar pagamento
+ *     description: Confirma o pagamento de um Payment Intent após o cliente inserir os dados do cartão.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - paymentIntentId
+ *               - paymentMethodId
+ *             properties:
+ *               paymentIntentId:
+ *                 type: string
+ *                 description: ID do Payment Intent
+ *               paymentMethodId:
+ *                 type: string
+ *                 description: ID do método de pagamento (cartão)
+ *     responses:
+ *       200:
+ *         description: Pagamento confirmado ou ação adicional necessária
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 paymentIntentId:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 requiresAction:
+ *                   type: boolean
+ *                 clientSecret:
+ *                   type: string
+ *                 nextAction:
+ *                   type: object
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+router.post('/confirm-payment', paymentController.confirmPayment);
+
+/**
+ * @swagger
+ * /payment-intent/{paymentIntentId}/status:
+ *   get:
+ *     summary: Verificar status do Payment Intent
+ *     description: Retorna o status de um pagamento via Payment Intent.
+ *     parameters:
+ *       - in: path
+ *         name: paymentIntentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do Payment Intent
+ *     responses:
+ *       200:
+ *         description: Status do Payment Intent retornado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 paymentIntentId:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                 amount:
+ *                   type: integer
+ *                 currency:
+ *                   type: string
+ *                 paymentMethod:
+ *                   type: string
+ *                 metadata:
+ *                   type: object
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         description: Payment Intent não encontrado
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+router.get('/payment-intent/:paymentIntentId/status', paymentController.checkPaymentStatus);
+
+// === ENDPOINTS EXISTENTES (para compatibilidade) ===
+
+/**
+ * @swagger
+ * /create-checkout-session:
+ *   post:
+ *     summary: Criar sessão de checkout do Stripe
+ *     description: Cria uma sessão de checkout do Stripe para processar pagamentos via página externa.
  *     requestBody:
  *       required: true
  *       content:
@@ -26,18 +182,17 @@ const paymentController = require('../controllers/paymentController');
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 sessionId:
  *                   type: string
- *                   example: cs_test_a1b2c3d4e5f6g7h8i9j0
  *                 checkoutUrl:
  *                   type: string
- *                   example: https://checkout.stripe.com/pay/cs_test_a1b2c3
  *                 expiresAt:
  *                   type: string
  *                   format: date-time
  *       400:
  *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         description: Produto ou conta Stripe não encontrada
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
@@ -45,21 +200,20 @@ router.post('/create-checkout-session', paymentController.createCheckoutSession)
 
 /**
  * @swagger
- * /api/payments/status/{sessionId}:
+ * /status/{sessionId}:
  *   get:
- *     summary: Verificar o status de um pagamento
- *     tags: [Pagamentos]
- *     description: Recupera o status atual de uma sessão de pagamento
+ *     summary: Verificar status do pagamento via sessão
+ *     description: Retorna o status de um pagamento realizado via sessão de checkout do Stripe.
  *     parameters:
  *       - in: path
  *         name: sessionId
+ *         required: true
  *         schema:
  *           type: string
- *         required: true
- *         description: ID da sessão de checkout do Stripe
+ *         description: ID da sessão de checkout
  *     responses:
  *       200:
- *         description: Status do pagamento recuperado com sucesso
+ *         description: Status da sessão retornado com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -67,18 +221,14 @@ router.post('/create-checkout-session', paymentController.createCheckoutSession)
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 sessionId:
  *                   type: string
  *                 status:
  *                   type: string
- *                   example: paid
  *                 amountTotal:
  *                   type: integer
- *                   example: 9900
  *                 currency:
  *                   type: string
- *                   example: brl
  *                 customer:
  *                   type: string
  *                 paymentIntent:
@@ -87,18 +237,21 @@ router.post('/create-checkout-session', paymentController.createCheckoutSession)
  *                   type: object
  *       400:
  *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         description: Sessão não encontrada
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
 router.get('/status/:sessionId', paymentController.checkPaymentStatus);
 
+// === ENDPOINTS DE PRODUTOS ===
+
 /**
  * @swagger
- * /api/payments/add-product:
+ * /add-product:
  *   post:
- *     summary: Adicionar um produto
- *     tags: [Produtos]
- *     description: Adiciona um novo produto (para testes)
+ *     summary: Adicionar produto
+ *     description: Adiciona um novo produto para testes.
  *     requestBody:
  *       required: true
  *       content:
@@ -111,19 +264,15 @@ router.get('/status/:sessionId', paymentController.checkPaymentStatus);
  *             properties:
  *               name:
  *                 type: string
- *                 example: "Produto Premium"
  *               description:
  *                 type: string
- *                 example: "Um produto de alta qualidade"
  *               price:
  *                 type: number
- *                 example: 99.00
- *                 description: "Preço em reais"
+ *                 description: Preço em reais (será convertido para centavos)
  *               images:
  *                 type: array
  *                 items:
  *                   type: string
- *                 example: ["https://exemplo.com/imagem.jpg"]
  *     responses:
  *       200:
  *         description: Produto adicionado com sucesso
@@ -134,7 +283,6 @@ router.get('/status/:sessionId', paymentController.checkPaymentStatus);
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 product:
  *                   $ref: '#/components/schemas/Product'
  *       400:
@@ -146,14 +294,13 @@ router.post('/add-product', paymentController.addProduct);
 
 /**
  * @swagger
- * /api/payments/products:
+ * /products:
  *   get:
  *     summary: Listar produtos disponíveis
- *     tags: [Produtos]
- *     description: Recupera a lista de todos os produtos disponíveis
+ *     description: Retorna a lista de produtos disponíveis para compra.
  *     responses:
  *       200:
- *         description: Lista de produtos recuperada com sucesso
+ *         description: Lista de produtos retornada com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -161,7 +308,6 @@ router.post('/add-product', paymentController.addProduct);
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 products:
  *                   type: array
  *                   items:
