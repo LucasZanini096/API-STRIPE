@@ -42,6 +42,10 @@ exports.handleWebhook = async (req, res) => {
       case 'account.application.authorized':
         await handleApplicationAuthorized(event.data.object);
         break;
+
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event.data.object);
+        break;  
         
       case 'account.application.deauthorized':
         await handleApplicationDeauthorized(event.data.object);
