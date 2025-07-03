@@ -63,7 +63,7 @@ exports.createPaymentIntent = async (req, res) => {
 
 exports.confirmPaymentIntent = async (req, res) => {
   try {
-    const { paymentIntentId } = req.body;
+    const { paymentIntentId, paymentMethodId } = req.body;
 
     if (!paymentIntentId) {
       return res.status(400).json({
@@ -72,14 +72,25 @@ exports.confirmPaymentIntent = async (req, res) => {
       });
     }
 
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    let paymentIntent;
+
+    // Se um payment method foi fornecido, confirmar o pagamento
+    if (paymentMethodId) {
+      paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId, {
+        payment_method: paymentMethodId
+      });
+    } else {
+      // Apenas recuperar o status atual
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    }
 
     res.json({
       success: true,
       status: paymentIntent.status,
       amount: paymentIntent.amount,
       currency: paymentIntent.currency,
-      charges: paymentIntent.charges?.data || []
+      charges: paymentIntent.charges?.data || [],
+      application_fee_amount: paymentIntent.application_fee_amount
     });
 
   } catch (error) {
